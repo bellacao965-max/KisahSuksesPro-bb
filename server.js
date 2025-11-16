@@ -1,37 +1,61 @@
 
 import express from "express";
-import fetch from "node-fetch";
+import Groq from "groq-sdk";
+import dotenv from "dotenv";
 import cors from "cors";
+import path from "path";
+
+dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+// === AI CONFIG ===
+if (!process.env.GROQ_API_KEY) {
+  console.error("❌ ERROR: GROQ_API_KEY belum di-set!");
+}
+
+const MODEL = "llama-3.1-8b-instant"; // model cepat & stabil
+
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
+
+// === ROUTE AI ===
 app.post("/api/ai", async (req, res) => {
-  const userPrompt = req.body.prompt;
-
   try {
-    const result = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "user", content: userPrompt }],
-        max_tokens: 200
-      })
+    const prompt = req.body.prompt;
+
+    if (!prompt) {
+      return res.status(400).json({ error: "No prompt provided" });
+    }
+
+    const completion = await groq.chat.completions.create({
+      model: MODEL,
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 300,
     });
 
-    const data = await result.json();
+    const reply = completion.choices?.[0]?.message?.content || "No reply";
 
-    res.json({ reply: data.choices[0].message.content });
+    res.json({ reply });
 
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ reply: "Server error" });
+    console.error("AI ERROR:", err);
+    res.status(500).json({ error: "AI Error", detail: err.message });
   }
 });
 
-app.listen(3000, () => console.log("AI Server ready on port 3000"));
+// === STATIC FILES ===
+const __dirname = path.resolve();
+app.use(express.static("public"));
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// === START SERVER ===
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`🚀 Server RUNNING on port ${PORT}`));
