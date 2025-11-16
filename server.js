@@ -17,7 +17,7 @@ if (!process.env.GROQ_API_KEY) {
   console.error("❌ ERROR: GROQ_API_KEY belum di-set!");
 }
 
-const MODEL = process.env.MODEL || "llama3-8b-8192";
+const MODEL = process.env.MODEL || "llama-3.1-8b-instant";
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -49,7 +49,7 @@ app.post("/api/ai", async (req, res) => {
 
 // === STATIC FILES ===
 const __dirname = path.resolve();
-app.use(express.static("./"));
+app.use(express.static("public"));
 
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
